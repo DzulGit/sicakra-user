@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   typescript: {
-    output: 'standalone',
     ignoreBuildErrors: true,
   },
   images: {
