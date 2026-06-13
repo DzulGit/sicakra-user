@@ -1,14 +1,49 @@
 "use client";
 
-import { AlertCircle, Plus, FileText } from "lucide-react";
+import { AlertCircle, Plus, FileText, Loader2 } from "lucide-react";
+import useSWR from "swr";
+import api from "../../lib/api"; // Sesuaikan letak path jika berbeda
 
 export function BillingStats() {
+  const fetcher = (url: string) => api.get(url).then(res => res.data);
+  // Ubah endpoint ke profile untuk mengambil data dari tabel users
+  const { data: userProfile, isLoading } = useSWR('/user/profile', fetcher);
+
   return (
     <div className="lg:col-span-3 space-y-3 sm:space-y-4">
-      <div className="rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-sm">
-        <div className="mb-1 text-[10px] sm:text-xs font-medium text-gray-600 uppercase tracking-wider">Status Layanan</div>
-        <div className="mb-2 sm:mb-3 text-3xl sm:text-4xl font-black text-black">Aktif</div>
-        <div className="inline-block rounded-full bg-emerald-500 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-white">GOOD</div>
+      
+      {/* CARD STATUS LAYANAN */}
+      <div className="rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-sm flex flex-col justify-between">
+        
+        {/* Header: Judul Kiri, Status Kanan Atas */}
+        <div className="flex items-start justify-between mb-1 sm:mb-2">
+          <div className="text-[10px] sm:text-xs font-medium text-gray-600 uppercase tracking-wider">
+            Layanan Aktif
+          </div>
+          
+          {!isLoading && userProfile ? (
+            <div className={`rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-white ${userProfile.status === 'ACTIVE' || userProfile.status === 'Aktif' ? 'bg-emerald-500' : 'bg-red-500'}`}>
+              {userProfile.status ? userProfile.status.toUpperCase() : "AKTIF"}
+            </div>
+          ) : !isLoading && !userProfile ? (
+            <div className="rounded-full bg-gray-300 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-white">NONAKTIF</div>
+          ) : null}
+        </div>
+        
+        {/* Konten: Nama Paket Statis (Multi-baris jika panjang) */}
+        <div className="w-full mt-1">
+          {isLoading ? (
+            <div className="py-2">
+              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            </div>
+          ) : userProfile ? (
+            <div className="text-xl sm:text-2xl font-black text-black leading-tight break-words whitespace-normal pb-1">
+              {userProfile.package?.name || "Paket Internet"}
+            </div>
+          ) : (
+            <div className="text-lg font-black text-gray-400 mt-1">Belum Ada Layanan</div>
+          )}
+        </div>
       </div>
 
       <div className="rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-sm">
