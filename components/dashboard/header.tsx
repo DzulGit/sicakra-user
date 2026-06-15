@@ -1,8 +1,9 @@
 "use client";
 
-import { Search, HelpCircle, LogOut, Key } from "lucide-react";
+import { LogOut, Key } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { NotificationDropdown } from "./notification-dropdown";
 
 export function Header({ userData, onOpenPwdModal }: { userData: any; onOpenPwdModal: () => void }) {
   const router = useRouter();
@@ -39,17 +40,14 @@ export function Header({ userData, onOpenPwdModal }: { userData: any; onOpenPwdM
       <div className="flex-1" />
 
       <div className="flex items-center gap-1.5 sm:gap-3">
-        <button className="flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-full hover:bg-gray-200">
-          <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-        </button>
-        <button className="flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-full hover:bg-gray-200">
-          <HelpCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-        </button>
+        
+        {/* Komponen Notifikasi disisipkan di sini */}
+        <NotificationDropdown />
 
         <div className="relative" ref={dropdownRef}>
           <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="block">
             <div className="h-7 w-7 sm:h-9 sm:w-9 overflow-hidden rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-xs font-bold shadow-inner">
-              {userData.fullName?.substring(0, 2).toUpperCase() || "U"}
+              {userData?.fullName?.substring(0, 2).toUpperCase() || "U"}
             </div>
           </button>
 
