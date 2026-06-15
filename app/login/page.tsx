@@ -37,6 +37,7 @@ export default function LoginPage() {
       const data = await res.json();
       
       // 🔥 SIMPEN DATA USER KE LOCAL STORAGE BIAR BISA DIBACA DASHBOARD
+      localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("sicakra_user", JSON.stringify(data.user));
 
       router.push("/");
