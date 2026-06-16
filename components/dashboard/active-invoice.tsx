@@ -9,15 +9,15 @@ export function ActiveInvoice() {
   const { data: activeInvoices, isLoading: loadingActive, mutate: mutateActive } = useSWR("activeInvoices", fetchActiveInvoices);
   const [isPaying, setIsPaying] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>("DANA"); // Default DANA biar kelihatan redirect URL-nya
-  
+
   const currentInvoice = activeInvoices?.[0];
 
   const handlePayment = async (invoiceId: string) => {
     setIsPaying(invoiceId);
     try {
       // 1. Ambil token dari localStorage
-      const token = localStorage.getItem("accessToken"); 
-      
+      const token = localStorage.getItem("accessToken");
+
       // 🔥 SPY LOG: Intip di console pas diklik nilainya apa
       console.log("DEBUG - Token dari LocalStorage:", token);
       console.log("DEBUG - Header Auth yang dikirim:", `Bearer ${token}`);
@@ -27,13 +27,12 @@ export function ActiveInvoice() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`, // Membawa token JWT
         },
         body: JSON.stringify({
           invoiceId: invoiceId,
           method: paymentMethod,
         }),
-        credentials: "include", // 🔥 TAMBAHKAN INI: Menyelaraskan dengan sistem login lu
+        credentials: "include", // ini yang bawa cookie HttpOnly otomatis
       });
 
       const data = await res.json();
@@ -79,7 +78,7 @@ export function ActiveInvoice() {
 
         <div className="relative flex flex-col h-[320px] sm:h-[400px] justify-center rounded-lg sm:rounded-xl bg-gray-50 p-6 sm:p-8 overflow-hidden border border-gray-100 mt-3 sm:mt-4">
           <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-black via-transparent to-transparent" />
-          
+
           {loadingActive ? (
             <div className="flex flex-col items-center justify-center z-10">
               <Loader2 className="w-8 h-8 animate-spin text-gray-400 mb-2" />
@@ -92,7 +91,7 @@ export function ActiveInvoice() {
                 <h1 className="text-4xl sm:text-5xl font-black text-black tracking-tighter">Rp {currentInvoice.amount.toLocaleString("id-ID")}</h1>
                 <div className="inline-block mt-3 px-3 py-1 bg-amber-100 text-amber-700 text-[10px] sm:text-xs font-bold rounded-md">BELUM DIBAYAR • {currentInvoice.period}</div>
               </div>
-              
+
               <div className="space-y-1.5 text-[10px] sm:text-xs mt-4">
                 <div className="flex justify-between border-b border-gray-200 pb-1.5"><span className="text-gray-500">No. Invoice</span><span className="font-bold text-black">{currentInvoice.invoiceNum}</span></div>
                 <div className="flex justify-between border-b border-gray-200 pb-1.5"><span className="text-gray-500">Paket</span><span className="font-bold text-black">{currentInvoice.service.package.name}</span></div>
@@ -101,8 +100,8 @@ export function ActiveInvoice() {
               {/* 🔥 DROPDOWN METODE PEMBAYARAN 🔥 */}
               <div className="mt-4 flex flex-col gap-2">
                 <label className="text-[10px] sm:text-xs font-bold text-gray-500 flex items-center gap-1"><CreditCard className="w-3 h-3" /> Pilih Metode Bayar</label>
-                <select 
-                  value={paymentMethod} 
+                <select
+                  value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
                   className="w-full h-10 px-3 text-xs sm:text-sm border border-gray-200 rounded-lg outline-none focus:border-black font-semibold bg-white"
                 >
@@ -115,9 +114,9 @@ export function ActiveInvoice() {
                 </select>
               </div>
 
-              <button 
-                onClick={() => handlePayment(currentInvoice.id)} 
-                disabled={isPaying === currentInvoice.id} 
+              <button
+                onClick={() => handlePayment(currentInvoice.id)}
+                disabled={isPaying === currentInvoice.id}
                 className="w-full h-10 sm:h-12 bg-black text-white rounded-full text-xs font-bold shadow-lg hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
               >
                 {isPaying === currentInvoice.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "Bayar Tagihan Sekarang"}
