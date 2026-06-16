@@ -5,7 +5,7 @@ import useSWR from "swr";
 import api from "../../lib/api";
 
 export function BillingStats() {
-  const fetcher = (url: string) => api.get(url).then(res => res.data);
+  const fetcher = (url: string) => api.get(url).then((res: any) => res.json())
   
   const { data: userProfile, isLoading } = useSWR('/user/profile', fetcher);
   const { data: activeInvoices } = useSWR('/user/tagihan', fetcher);

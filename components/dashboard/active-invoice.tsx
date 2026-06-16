@@ -15,36 +15,39 @@ export function ActiveInvoice() {
   const handlePayment = async (invoiceId: string) => {
     setIsPaying(invoiceId);
     try {
-      // 1. Ambil token JWT dari localStorage atau cookies (sesuaikan dengan sistem lu)
-      const token = localStorage.getItem("accessToken") || localStorage.getItem("token"); 
+      // 1. Ambil token dari localStorage
+      const token = localStorage.getItem("accessToken"); 
+      
+      // 🔥 SPY LOG: Intip di console pas diklik nilainya apa
+      console.log("DEBUG - Token dari LocalStorage:", token);
+      console.log("DEBUG - Header Auth yang dikirim:", `Bearer ${token}`);
 
       // 2. Tembak API Backend Cloud Run
       const res = await fetch("https://sicakra-api-qgjaoib32q-et.a.run.app/payments/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // PENTING: Biar backend tau siapa yang bayar
+          "Authorization": `Bearer ${token}`, // Membawa token JWT
         },
         body: JSON.stringify({
           invoiceId: invoiceId,
           method: paymentMethod,
         }),
+        credentials: "include", // 🔥 TAMBAHKAN INI: Menyelaraskan dengan sistem login lu
       });
 
       const data = await res.json();
+      console.log("DEBUG - Response Backend:", data);
 
       if (!res.ok) {
         throw new Error(data.message || "Gagal membuat tagihan Xendit");
       }
 
-      // 3. Tangkap response URL / Nomor VA dari backend
       if (data.paymentUrl) {
         if (data.paymentUrl.startsWith("http")) {
-          // Kalau bentuknya Link (Kayak DANA, OVO, GOPAY), langsung redirect! 🚀
           window.location.href = data.paymentUrl;
         } else {
-          // Kalau bentuknya angka VA / String QRIS, tampilin alert
-          alert(`Berhasil! Kode Bayar / Virtual Account Anda:\n\n${data.paymentUrl}\n\nSilakan transfer ke nomor di atas.`);
+          alert(`Berhasil! Kode Bayar / Virtual Account Anda:\n\n${data.paymentUrl}`);
           await mutateActive();
         }
       } else {
@@ -56,6 +59,7 @@ export function ActiveInvoice() {
       setIsPaying(null);
     }
   };
+
 
   return (
     <div className="lg:col-span-5 space-y-3 sm:space-y-4">
