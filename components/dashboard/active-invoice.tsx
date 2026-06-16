@@ -1,16 +1,39 @@
 "use client";
 
-import { Maximize2, List, Copy, Loader2, CheckCircle2, CreditCard } from "lucide-react";
+import { ArrowUpCircle, MapPin, XCircle, ChevronLeft, ChevronRight, Maximize2, List, Copy, Loader2, CheckCircle2, CreditCard } from "lucide-react";
 import useSWR from "swr";
-import { useState } from "react";
-import { fetchActiveInvoices } from "@/lib/user-billing"; // payInvoice dihapus, kita tembak API langsung
+import { useState, useEffect } from "react";
+import { fetchActiveInvoices } from "@/lib/user-billing";
+import api from "@/lib/api";
+import { ModalGantiPaket } from "./modals/modal-ganti-paket";
+import { ModalPindahAlamat } from "./modals/modal-pindah-alamat";
+import { ModalTerminasi } from "./modals/modal-terminasi";
 
-export function ActiveInvoice() {
+interface ActiveInvoiceProps {
+  activeServiceId?: string | null;
+  setActiveServiceId?: (id: string) => void;
+}
+
+export function ActiveInvoice({ activeServiceId, setActiveServiceId }: ActiveInvoiceProps) {
   const { data: activeInvoices, isLoading: loadingActive, mutate: mutateActive } = useSWR("activeInvoices", fetchActiveInvoices);
+  const { data: userProfile } = useSWR('/user/profile', (url) => api.get(url).then(res => res.data));
+  const services = userProfile?.services || (userProfile?.id ? [userProfile] : []);
+
   const [isPaying, setIsPaying] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>("DANA"); // Default DANA biar kelihatan redirect URL-nya
 
-  const currentInvoice = activeInvoices?.[0];
+
+  const [activeModal, setActiveModal] = useState<'GANTI_PAKET' | 'PINDAH_ALAMAT' | 'PUTUS_LANGGANAN' | null>(null);
+
+  useEffect(() => {
+    if (services.length > 0 && !activeServiceId && setActiveServiceId) {
+      setActiveServiceId(services[0].id);
+    }
+  }, [services, activeServiceId, setActiveServiceId]);
+
+  const currentIndex = Math.max(0, services.findIndex((s: any) => s.id === activeServiceId));
+  const currentService = services[currentIndex];
+  const currentInvoice = activeInvoices?.find((inv: any) => inv.service?.id === activeServiceId) || activeInvoices?.[0];
 
   const handlePayment = async (invoiceId: string) => {
     setIsPaying(invoiceId);
@@ -59,28 +82,37 @@ export function ActiveInvoice() {
     }
   };
 
-
   return (
-    <div className="lg:col-span-5 space-y-3 sm:space-y-4">
-      <div className="rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-sm">
-        <div className="mb-3 sm:mb-4 flex items-center justify-between mb-2">
-          <h2 className="text-sm sm:text-base font-semibold text-black">Tagihan Aktif</h2>
-          <button className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg hover:bg-gray-100 bg-gray-50">
-            <Maximize2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-          </button>
-        </div>
-        <div className="flex items-center gap-1 flex-wrap">
-          <button className="rounded-full bg-black px-2.5 py-1 sm:px-3 sm:py-1.5 text-[9px] sm:text-[10px] font-medium text-white">Bulan Ini</button>
-          <button className="hidden sm:block rounded-full px-2.5 py-1 sm:px-3 sm:py-1.5 text-[9px] sm:text-[10px] font-medium text-gray-600 hover:bg-gray-100">Semua Tunggakan</button>
-          <button className="rounded-full px-2.5 py-1 sm:px-3 sm:py-1.5 text-[9px] sm:text-[10px] font-medium text-gray-600 hover:bg-gray-100">Cetak PDF</button>
-          <button className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg hover:bg-gray-100 bg-gray-50"><List className="h-3 w-3 sm:h-3.5 sm:w-3.5" /></button>
+    <div className="lg:col-span-5 flex flex-col space-y-4 h-full">
+      <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-sm flex-1 flex flex-col">
+
+        {/* Header Slider Layanan & Paket */}
+        <div className="mb-4 flex items-center justify-between border-b pb-3">
+          <div>
+            <h2 className="text-base font-bold text-black">Layanan Aktif</h2>
+            <p className="text-xs font-semibold text-emerald-600 mt-0.5">
+              {currentService?.package?.name || "Memuat paket..."}
+            </p>
+          </div>
+          {services.length > 1 && setActiveServiceId && (
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+              <button onClick={() => setActiveServiceId(services[currentIndex - 1].id)} disabled={currentIndex === 0} className="p-1 rounded hover:bg-white disabled:opacity-30">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-bold px-2">{currentIndex + 1} / {services.length}</span>
+              <button onClick={() => setActiveServiceId(services[currentIndex + 1].id)} disabled={currentIndex === services.length - 1} className="p-1 rounded hover:bg-white disabled:opacity-30">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
 
-        <div className="relative flex flex-col h-[320px] sm:h-[400px] justify-center rounded-lg sm:rounded-xl bg-gray-50 p-6 sm:p-8 overflow-hidden border border-gray-100 mt-3 sm:mt-4">
+        {/* Info Tagihan */}
+        <div className="relative flex flex-col flex-1 justify-center rounded-xl bg-gray-50 p-6 sm:p-8 overflow-hidden border min-h-[200px]">
           <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-black via-transparent to-transparent" />
 
           {loadingActive ? (
-            <div className="flex flex-col items-center justify-center z-10">
+            <div className="flex flex-col items-center justify-center z-10 h-full">
               <Loader2 className="w-8 h-8 animate-spin text-gray-400 mb-2" />
               <p className="text-xs text-gray-500 font-medium">Mengecek tagihan...</p>
             </div>
@@ -132,20 +164,30 @@ export function ActiveInvoice() {
         </div>
       </div>
 
-      <div className="rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-sm">
-        {/* ... Lanjutan Kode Render Icon (Biarkan Sama Saja) ... */}
+      {/* Menu Layanan Pelanggan */}
+      <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-sm">
         <div className="mb-3 sm:mb-4 flex items-center justify-between">
           <h2 className="text-sm sm:text-base font-semibold text-black">Layanan Pelanggan</h2>
           <button className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg hover:bg-gray-100">
             <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
           </button>
         </div>
-        <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          <ReportCircle iconType="chart" label="Promo" />
-          <ReportCircle iconType="list" label="Tiket Gangguan" />
-          <ReportCircle iconType="book" label="Panduan" />
+        <div className="grid grid-cols-3 gap-3">
+          <button onClick={() => setActiveModal('GANTI_PAKET')} className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border bg-gray-50 hover:bg-emerald-50">
+            <ArrowUpCircle className="h-6 w-6 text-emerald-600 mb-2" /><span className="text-[10px] sm:text-xs font-semibold">Ganti Layanan</span>
+          </button>
+          <button onClick={() => setActiveModal('PINDAH_ALAMAT')} className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border bg-gray-50 hover:bg-blue-50">
+            <MapPin className="h-6 w-6 text-blue-600 mb-2" /><span className="text-[10px] sm:text-xs font-semibold">Relokasi</span>
+          </button>
+          <button onClick={() => setActiveModal('PUTUS_LANGGANAN')} className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border bg-gray-50 hover:bg-red-50">
+            <XCircle className="h-6 w-6 text-red-600 mb-2" /><span className="text-[10px] sm:text-xs font-semibold">Terminasi</span>
+          </button>
         </div>
       </div>
+
+      <ModalGantiPaket isOpen={activeModal === 'GANTI_PAKET'} onClose={() => setActiveModal(null)} services={services} initialServiceId={activeServiceId} />
+      <ModalPindahAlamat isOpen={activeModal === 'PINDAH_ALAMAT'} onClose={() => setActiveModal(null)} services={services} initialServiceId={activeServiceId} />
+      <ModalTerminasi isOpen={activeModal === 'PUTUS_LANGGANAN'} onClose={() => setActiveModal(null)} services={services} initialServiceId={activeServiceId} />
     </div>
   );
 }

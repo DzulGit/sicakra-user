@@ -2,56 +2,64 @@
 
 import { AlertCircle, Plus, FileText, Loader2, CheckCircle2 } from "lucide-react";
 import useSWR from "swr";
-import api from "../../lib/api";
+import api from "@/lib/api";
 
-export function BillingStats() {
-  const fetcher = (url: string) => api.get(url).then((res: any) => res.json())
-  
+interface BillingStatsProps {
+  activeServiceId?: string | null;
+}
+
+export function BillingStats({ activeServiceId }: BillingStatsProps) {
+  const fetcher = (url: string) => api.get(url).then(res => res.data);
+
   const { data: userProfile, isLoading } = useSWR('/user/profile', fetcher);
   const { data: activeInvoices } = useSWR('/user/tagihan', fetcher);
   const { data: historyInvoices } = useSWR('/user/tagihan/riwayat', fetcher);
 
-  // Mengambil dueDate
-  const rawDueDate = userProfile?.latestInvoice?.dueDate || userProfile?.invoices?.[0]?.dueDate;
+  const services = userProfile?.services || (userProfile?.id ? [userProfile] : []);
+  const targetService = services.find((s: any) => s.id === activeServiceId) || services[0];
+
+  const serviceActiveInvoices = activeInvoices?.filter((inv: any) => inv.service?.id === targetService?.id) || activeInvoices || [];
+  const serviceHistoryInvoices = historyInvoices?.filter((inv: any) => inv.service?.id === targetService?.id) || historyInvoices || [];
+
+  const rawDueDate = serviceActiveInvoices[0]?.dueDate || targetService?.invoices?.[0]?.dueDate;
   const dueDateObj = rawDueDate ? new Date(rawDueDate) : null;
   const tglJatuhTempo = dueDateObj ? dueDateObj.getDate() : '-';
 
-  // Kalkulasi Statistik
-  const lunasCount = historyInvoices?.length || 0;
-  const pendingCount = activeInvoices?.length || 0;
-  const telatCount = activeInvoices?.filter((inv: any) => new Date() > new Date(inv.dueDate)).length || 0;
-  
+  const lunasCount = serviceHistoryInvoices.length || 0;
+  const pendingCount = serviceActiveInvoices.length || 0;
+  const telatCount = serviceActiveInvoices.filter((inv: any) => new Date() > new Date(inv.dueDate)).length || 0;
+
   const totalInvoices = lunasCount + pendingCount;
   const lunasPercentage = totalInvoices === 0 ? 0 : (lunasCount / totalInvoices) * 100;
   const pendingPercentage = totalInvoices === 0 ? 0 : (pendingCount / totalInvoices) * 100;
 
   return (
     <div className="lg:col-span-3 flex flex-col space-y-3 sm:space-y-4 h-full">
-      
+
       {/* CARD STATUS LAYANAN */}
       <div className="rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-sm flex flex-col justify-between">
         <div className="flex items-start justify-between mb-1 sm:mb-2">
           <div className="text-[10px] sm:text-xs font-medium text-gray-600 uppercase tracking-wider">
             Layanan Aktif
           </div>
-          
-          {!isLoading && userProfile ? (
-            <div className={`rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-white ${userProfile.status === 'ACTIVE' || userProfile.status === 'Aktif' ? 'bg-emerald-500' : 'bg-red-500'}`}>
-              {userProfile.status ? userProfile.status.toUpperCase() : "AKTIF"}
+
+          {!isLoading && targetService ? (
+            <div className={`rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-white ${targetService.status === 'ACTIVE' || targetService.status === 'Aktif' ? 'bg-emerald-500' : 'bg-red-500'}`}>
+              {targetService.status ? targetService.status.toUpperCase() : "AKTIF"}
             </div>
-          ) : !isLoading && !userProfile ? (
+          ) : !isLoading && !targetService ? (
             <div className="rounded-full bg-gray-300 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-white">NONAKTIF</div>
           ) : null}
         </div>
-        
+
         <div className="w-full mt-1">
           {isLoading ? (
             <div className="py-2">
               <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
             </div>
-          ) : userProfile ? (
+          ) : targetService ? (
             <div className="text-xl sm:text-2xl font-black text-black leading-tight break-words whitespace-normal pb-1">
-              {userProfile.package?.name || "Paket Internet"}
+              {targetService.package?.name || "Paket Internet"}
             </div>
           ) : (
             <div className="text-lg font-black text-gray-400 mt-1">Belum Ada Layanan</div>
@@ -62,7 +70,7 @@ export function BillingStats() {
       {/* CARD JATUH TEMPO DINAMIS */}
       <div className="rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-sm">
         <div className="mb-1 text-[10px] sm:text-xs font-medium text-gray-600 uppercase tracking-wider">Jatuh Tempo</div>
-        
+
         {isLoading ? (
           <Loader2 className="w-6 h-6 animate-spin text-gray-400 mt-2" />
         ) : tglJatuhTempo !== '-' ? (
@@ -94,7 +102,6 @@ export function BillingStats() {
         )}
       </div>
 
-      {/* KARTU YANG DIKEMBALIKAN */}
       <div className="rounded-xl sm:rounded-2xl border-2 border-dashed border-gray-300 bg-white p-3 sm:p-4 shadow-sm">
         <div className="flex items-center justify-center">
           <button className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full hover:bg-gray-50 transition-colors">
@@ -103,7 +110,6 @@ export function BillingStats() {
         </div>
       </div>
 
-      {/* KARTU YANG DIKEMBALIKAN */}
       <div className="rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-3 shadow-sm">
         <div className="flex items-center justify-between text-[10px] sm:text-xs">
           <span className="font-medium text-black">Metode Pembayaran</span>
