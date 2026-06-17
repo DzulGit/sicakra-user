@@ -11,10 +11,10 @@ export default function PaymentFailedPage() {
       <h1 className="text-2xl font-bold text-red-500">Pembayaran Gagal</h1>
       <p className="text-gray-400">Silakan coba lagi.</p>
       <button
-        onClick={() => router.push("/tagihan")}
+        onClick={() => router.push("/")}
         className="px-6 py-2 bg-accent text-white rounded-lg"
       >
-        Kembali ke Tagihan
+        Kembali ke Beranda
       </button>
     </div>
   );

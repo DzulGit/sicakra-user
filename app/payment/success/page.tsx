@@ -8,7 +8,7 @@ export default function PaymentSuccessPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.push("/tagihan");
+      router.push("/");
     }, 3000);
     return () => clearTimeout(timer);
   }, [router]);
@@ -17,7 +17,7 @@ export default function PaymentSuccessPage() {
     <div className="flex flex-col items-center justify-center min-h-screen gap-4">
       <div className="text-6xl">✅</div>
       <h1 className="text-2xl font-bold text-green-500">Pembayaran Berhasil!</h1>
-      <p className="text-gray-400">Mengalihkan ke halaman tagihan...</p>
+      <p className="text-gray-400">Mengalihkan ke halaman beranda...</p>
     </div>
   );
 }
