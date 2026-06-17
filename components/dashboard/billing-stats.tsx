@@ -23,7 +23,9 @@ export function BillingStats({ activeServiceId }: BillingStatsProps) {
 
   const rawDueDate = serviceActiveInvoices[0]?.dueDate || targetService?.invoices?.[0]?.dueDate;
   const dueDateObj = rawDueDate ? new Date(rawDueDate) : null;
-  const tglJatuhTempo = dueDateObj ? dueDateObj.getDate() : '-';
+  const tglJatuhTempo = dueDateObj 
+    ? dueDateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) // Hasilnya: "17 Jun"
+    : '-';
 
   const lunasCount = serviceHistoryInvoices.length || 0;
   const pendingCount = serviceActiveInvoices.length || 0;

@@ -166,12 +166,7 @@ export function ActiveInvoice({ activeServiceId, setActiveServiceId }: ActiveInv
 
       {/* Menu Layanan Pelanggan */}
       <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-sm">
-        <div className="mb-3 sm:mb-4 flex items-center justify-between">
-          <h2 className="text-sm sm:text-base font-semibold text-black">Layanan Pelanggan</h2>
-          <button className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg hover:bg-gray-100">
-            <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-          </button>
-        </div>
+        <h2 className="mb-4 text-base font-bold text-black">Layanan Pelanggan</h2>
         <div className="grid grid-cols-3 gap-3">
           <button onClick={() => setActiveModal('GANTI_PAKET')} className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border bg-gray-50 hover:bg-emerald-50">
             <ArrowUpCircle className="h-6 w-6 text-emerald-600 mb-2" /><span className="text-[10px] sm:text-xs font-semibold">Ganti Layanan</span>
