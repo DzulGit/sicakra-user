@@ -15,13 +15,20 @@ export function NetworkStatus({ activeServiceId }: NetworkStatusProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { data: userProfile } = useSWR('/user/profile', (url) => api.get(url).then(res => res.data));
   const services = userProfile?.services || (userProfile?.id ? [userProfile] : []);
+  const { data: serviceRequests } = useSWR('/service-requests', (url) => api.get(url).then(res => res.data));
+
+  const activeAddRequest = serviceRequests?.find(
+    (req: any) =>
+      (req.status === 'PENDING' || req.status === 'APPROVED') &&
+      req.type === 'TAMBAH_LANGGANAN'
+  );
 
   const currentService = services.find((s: any) => s.id === activeServiceId) || services[0];
 
   return (
     // Tambahkan h-full dan flex flex-col agar area bawah tidak kosong
     <div className="lg:col-span-4 flex flex-col h-full space-y-4">
-      
+
       {/* Kartu Status & Area Tiket (dibuat fleksibel agar besar) */}
       <div className="flex-1 flex flex-col rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-sm">
         <div className="mb-3 sm:mb-4 flex items-start justify-between">
@@ -46,17 +53,30 @@ export function NetworkStatus({ activeServiceId }: NetworkStatusProps) {
         </div>
       </div>
 
-      {/* Banner Tambah Layanan (Dipindah ke bawah) */}
+      {/* Banner Tambah Layanan */}
       <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 sm:p-6 text-white shadow-lg shrink-0">
         <div className="relative z-10">
           <h3 className="mb-1 text-xl font-bold">Tambah</h3>
           <p className="mb-3 text-xl font-bold opacity-90">Layanan Baru</p>
-          <button 
-            onClick={() => setIsModalOpen(true)} 
-            className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-emerald-600 hover:scale-105 transition-transform shadow-md"
-          >
-            Ajukan Sekarang
-          </button>
+
+          {activeAddRequest ? (
+            // 🟢 KALO LAGI PENGAJUAN: TAMPILIN STATUS
+            <div className="mt-2 inline-block rounded-lg bg-white/20 p-3 backdrop-blur-sm">
+              <p className="text-xs font-semibold text-white">
+                ⏳ {activeAddRequest.status === 'PENDING'
+                  ? 'Pengajuan sedang diproses admin.'
+                  : '✅ Pengajuan disetujui teknisi!'}
+              </p>
+            </div>
+          ) : (
+            // 🔴 KALO GAK ADA PENGAJUAN: MUNCULIN TOMBOL
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-emerald-600 hover:scale-105 transition-transform"
+            >
+              Ajukan Sekarang
+            </button>
+          )}
         </div>
       </div>
 

@@ -18,10 +18,20 @@ export function ActiveInvoice({ activeServiceId, setActiveServiceId }: ActiveInv
   const { data: activeInvoices, isLoading: loadingActive, mutate: mutateActive } = useSWR("activeInvoices", fetchActiveInvoices);
   const { data: userProfile } = useSWR('/user/profile', (url) => api.get(url).then(res => res.data));
   const services = userProfile?.services || (userProfile?.id ? [userProfile] : []);
+  
+  // Mata-mata status request
+  const { data: serviceRequests } = useSWR('/service-requests', (url) => api.get(url).then(res => res.data));
+
+  const currentServiceId = activeServiceId || services[0]?.id;
+
+  const activeRequest = serviceRequests?.find(
+    (req: any) =>
+      (req.status === 'PENDING' || req.status === 'APPROVED') &&
+      req.serviceId === currentServiceId
+  );
 
   const [isPaying, setIsPaying] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>("DANA"); // Default DANA biar kelihatan redirect URL-nya
-
 
   const [activeModal, setActiveModal] = useState<'GANTI_PAKET' | 'PINDAH_ALAMAT' | 'PUTUS_LANGGANAN' | null>(null);
 
@@ -38,14 +48,11 @@ export function ActiveInvoice({ activeServiceId, setActiveServiceId }: ActiveInv
   const handlePayment = async (invoiceId: string) => {
     setIsPaying(invoiceId);
     try {
-      // 1. Ambil token dari localStorage
       const token = localStorage.getItem("accessToken");
 
-      // 🔥 SPY LOG: Intip di console pas diklik nilainya apa
       console.log("DEBUG - Token dari LocalStorage:", token);
       console.log("DEBUG - Header Auth yang dikirim:", `Bearer ${token}`);
 
-      // 2. Tembak API Backend Cloud Run
       const res = await fetch("https://sicakra-api-qgjaoib32q-et.a.run.app/payments/create", {
         method: "POST",
         headers: {
@@ -55,7 +62,7 @@ export function ActiveInvoice({ activeServiceId, setActiveServiceId }: ActiveInv
           invoiceId: invoiceId,
           method: paymentMethod,
         }),
-        credentials: "include", // ini yang bawa cookie HttpOnly otomatis
+        credentials: "include", 
       });
 
       const data = await res.json();
@@ -172,17 +179,53 @@ export function ActiveInvoice({ activeServiceId, setActiveServiceId }: ActiveInv
             <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
           </button>
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <button onClick={() => setActiveModal('GANTI_PAKET')} className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border bg-gray-50 hover:bg-emerald-50">
-            <ArrowUpCircle className="h-6 w-6 text-emerald-600 mb-2" /><span className="text-[10px] sm:text-xs font-semibold">Ganti Layanan</span>
-          </button>
-          <button onClick={() => setActiveModal('PINDAH_ALAMAT')} className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border bg-gray-50 hover:bg-blue-50">
-            <MapPin className="h-6 w-6 text-blue-600 mb-2" /><span className="text-[10px] sm:text-xs font-semibold">Relokasi</span>
-          </button>
-          <button onClick={() => setActiveModal('PUTUS_LANGGANAN')} className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border bg-gray-50 hover:bg-red-50">
-            <XCircle className="h-6 w-6 text-red-600 mb-2" /><span className="text-[10px] sm:text-xs font-semibold">Terminasi</span>
-          </button>
-        </div>
+
+        {/* LOGIKA PENGGANTI 3 TOMBOL */}
+        {activeRequest ? (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-2 w-2 rounded-full animate-pulse bg-amber-500"></div>
+              <h4 className="text-sm font-bold text-amber-800 capitalize">
+                Pengajuan {activeRequest.type.replace('_', ' ').toLowerCase()}
+              </h4>
+            </div>
+            
+            {activeRequest.status === 'PENDING' ? (
+              <p className="text-xs text-amber-700">
+                Sedang menunggu keputusan admin. Tim kami akan segera meninjau permintaan Anda.
+              </p>
+            ) : (
+              <div className="rounded-lg bg-emerald-50 p-3 border border-emerald-100 mt-2">
+                <p className="text-xs text-emerald-800 font-medium mb-1">
+                  ✅ Disetujui! Teknisi dijadwalkan datang pada:
+                </p>
+                <p className="text-sm font-bold text-emerald-900">
+                  📅 {activeRequest.scheduledDate ? new Date(activeRequest.scheduledDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'Menunggu update'}
+                </p>
+                <p className="text-sm font-bold text-emerald-900 mb-2">
+                  ⏰ Jam: {activeRequest.scheduledTime || 'Menunggu konfirmasi'}
+                </p>
+                {activeRequest.adminNotes && (
+                  <p className="text-xs text-emerald-700 italic border-t border-emerald-200 pt-2">
+                    Catatan: {activeRequest.adminNotes}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-3">
+            <button onClick={() => setActiveModal('GANTI_PAKET')} className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border bg-gray-50 hover:bg-emerald-50 transition-colors">
+              <ArrowUpCircle className="h-6 w-6 text-emerald-600 mb-2" /><span className="text-[10px] sm:text-xs font-semibold text-center leading-tight">Ganti Layanan</span>
+            </button>
+            <button onClick={() => setActiveModal('PINDAH_ALAMAT')} className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border bg-gray-50 hover:bg-blue-50 transition-colors">
+              <MapPin className="h-6 w-6 text-blue-600 mb-2" /><span className="text-[10px] sm:text-xs font-semibold text-center leading-tight">Relokasi</span>
+            </button>
+            <button onClick={() => setActiveModal('PUTUS_LANGGANAN')} className="flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border bg-gray-50 hover:bg-red-50 transition-colors">
+              <XCircle className="h-6 w-6 text-red-600 mb-2" /><span className="text-[10px] sm:text-xs font-semibold text-center leading-tight">Terminasi</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <ModalGantiPaket isOpen={activeModal === 'GANTI_PAKET'} onClose={() => setActiveModal(null)} services={services} initialServiceId={activeServiceId} />
@@ -190,23 +233,4 @@ export function ActiveInvoice({ activeServiceId, setActiveServiceId }: ActiveInv
       <ModalTerminasi isOpen={activeModal === 'PUTUS_LANGGANAN'} onClose={() => setActiveModal(null)} services={services} initialServiceId={activeServiceId} />
     </div>
   );
-}
-
-function ReportCircle({ iconType, label }: { iconType: 'chart' | 'list' | 'book'; label: string }) {
-  const renderIcon = () => {
-    switch (iconType) {
-      case 'chart': return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 sm:h-5 sm:w-5"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M8 10v7M12 7v10M16 13v4" /></svg>;
-      case 'list': return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 sm:h-5 sm:w-5"><rect x="3" y="5" width="18" height="4" rx="1" /><rect x="3" y="11" width="18" height="4" rx="1" /><rect x="3" y="17" width="18" height="4" rx="1" /></svg>;
-      case 'book': return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 sm:h-5 sm:w-5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /><path d="M12 6v8M9 10h6" /></svg>;
-    }
-  }
-  return (
-    <div className="text-center">
-      <div className="relative mx-auto mb-1.5 sm:mb-2 flex h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 items-center justify-center">
-        <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#f0f0f0" strokeWidth="2" /><circle cx="50" cy="50" r="45" fill="none" stroke="#10b981" strokeWidth="2" strokeDasharray="283" strokeDashoffset="70" strokeLinecap="round" /></svg>
-        <div className="relative z-10 flex h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 items-center justify-center rounded-lg sm:rounded-xl bg-white shadow-sm text-gray-700">{renderIcon()}</div>
-      </div>
-      <div className="text-[10px] sm:text-xs font-medium text-black">{label}</div>
-    </div>
-  )
 }
