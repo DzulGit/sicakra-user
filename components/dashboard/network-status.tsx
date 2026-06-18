@@ -1,6 +1,6 @@
 "use client";
 
-import { Settings, MapPin } from "lucide-react";
+import { Settings, MapPin, CheckCircle } from "lucide-react";
 import useSWR from "swr";
 import api from "@/lib/api";
 import { useState } from "react";
@@ -13,23 +13,31 @@ interface NetworkStatusProps {
 
 export function NetworkStatus({ activeServiceId }: NetworkStatusProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [hiddenRequests, setHiddenRequests] = useState<string[]>([]);
+
   const { data: userProfile } = useSWR('/user/profile', (url) => api.get(url).then(res => res.data));
   const services = userProfile?.services || (userProfile?.id ? [userProfile] : []);
   const { data: serviceRequests } = useSWR('/service-requests', (url) => api.get(url).then(res => res.data));
 
+  // Masukkan status COMPLETED ke dalam filter agar banner tetap muncul sampai di-OK-kan
   const activeAddRequest = serviceRequests?.find(
     (req: any) =>
-      (req.status === 'PENDING' || req.status === 'APPROVED') &&
-      req.type === 'TAMBAH_LANGGANAN'
+      (req.status === 'PENDING' || req.status === 'APPROVED' || req.status === 'COMPLETED') &&
+      req.type === 'TAMBAH_LANGGANAN' &&
+      !hiddenRequests.includes(req.id)
   );
 
   const currentService = services.find((s: any) => s.id === activeServiceId) || services[0];
 
-  return (
-    // Tambahkan h-full dan flex flex-col agar area bawah tidak kosong
-    <div className="lg:col-span-4 flex flex-col h-full space-y-4">
+  const handleAcknowledge = () => {
+    if (activeAddRequest) {
+      setHiddenRequests((prev) => [...prev, activeAddRequest.id]);
+    }
+  };
 
-      {/* Kartu Status & Area Tiket (dibuat fleksibel agar besar) */}
+  return (
+    <div className="lg:col-span-4 flex flex-col h-full space-y-4">
+      {/* Kartu Status & Area Tiket */}
       <div className="flex-1 flex flex-col rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-sm">
         <div className="mb-3 sm:mb-4 flex items-start justify-between">
           <div>
@@ -46,7 +54,6 @@ export function NetworkStatus({ activeServiceId }: NetworkStatusProps) {
           </button>
         </div>
 
-        {/* Area Tiket Diperbesar dengan flex-1 */}
         <div className="flex-1 bg-gray-50 rounded-xl flex flex-col items-center justify-center text-gray-400 border border-dashed">
           <p className="text-xs font-medium">Area Tiket / Radar</p>
           <span className="text-[10px] mt-1">(Area ini akan diperluas secara otomatis)</span>
@@ -60,19 +67,30 @@ export function NetworkStatus({ activeServiceId }: NetworkStatusProps) {
           <p className="mb-3 text-xl font-bold opacity-90">Layanan Baru</p>
 
           {activeAddRequest ? (
-            // 🟢 KALO LAGI PENGAJUAN: TAMPILIN STATUS
-            <div className="mt-2 inline-block rounded-lg bg-white/20 p-3 backdrop-blur-sm">
-              <p className="text-xs font-semibold text-white">
-                ⏳ {activeAddRequest.status === 'PENDING'
-                  ? 'Pengajuan sedang diproses admin.'
-                  : '✅ Pengajuan disetujui teknisi!'}
-              </p>
+            <div className="mt-2 inline-block rounded-lg bg-white/20 p-3 backdrop-blur-sm w-full">
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-xs font-semibold text-white">
+                  {activeAddRequest.status === 'PENDING' && '⏳ Pengajuan sedang diproses admin.'}
+                  {activeAddRequest.status === 'APPROVED' && '🔧 Disetujui admin, menunggu pemasangan teknisi.'}
+                  {activeAddRequest.status === 'COMPLETED' && '✅ Pemasangan selesai! Layanan sudah aktif.'}
+                </p>
+                
+                {/* Tombol OK HANYA muncul jika statusnya COMPLETED (teknisi sudah selesai) */}
+                {activeAddRequest.status === 'COMPLETED' && (
+                  <button 
+                    onClick={handleAcknowledge}
+                    className="flex items-center gap-1 rounded-md bg-white px-3 py-1.5 text-[10px] font-bold text-emerald-600 hover:bg-gray-100 transition-colors shrink-0 shadow-sm"
+                  >
+                    <CheckCircle className="w-3 h-3" />
+                    OK
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
-            // 🔴 KALO GAK ADA PENGAJUAN: MUNCULIN TOMBOL
             <button
               onClick={() => setIsModalOpen(true)}
-              className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-emerald-600 hover:scale-105 transition-transform"
+              className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-emerald-600 hover:scale-105 transition-transform shadow-sm"
             >
               Ajukan Sekarang
             </button>

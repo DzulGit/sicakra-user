@@ -26,7 +26,8 @@ export function ActiveInvoice({ activeServiceId, setActiveServiceId }: ActiveInv
 
   const activeRequest = serviceRequests?.find(
     (req: any) =>
-      (req.status === 'PENDING' || req.status === 'APPROVED') &&
+      ['PENDING', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(req.status) &&
+      !hiddenRequests.includes(req.id) &&
       req.serviceId === currentServiceId
   );
 
@@ -34,6 +35,14 @@ export function ActiveInvoice({ activeServiceId, setActiveServiceId }: ActiveInv
   const [paymentMethod, setPaymentMethod] = useState<string>("DANA"); // Default DANA biar kelihatan redirect URL-nya
 
   const [activeModal, setActiveModal] = useState<'GANTI_PAKET' | 'PINDAH_ALAMAT' | 'PUTUS_LANGGANAN' | null>(null);
+
+  const [hiddenRequests, setHiddenRequests] = useState<string[]>([]);
+
+  const handleAcknowledge = () => {
+    if (activeRequest) {
+      setHiddenRequests((prev) => [...prev, activeRequest.id]);
+    }
+  };
 
   useEffect(() => {
     if (services.length > 0 && !activeServiceId && setActiveServiceId) {
@@ -194,22 +203,23 @@ export function ActiveInvoice({ activeServiceId, setActiveServiceId }: ActiveInv
               <p className="text-xs text-amber-700">
                 Sedang menunggu keputusan admin. Tim kami akan segera meninjau permintaan Anda.
               </p>
-            ) : (
+            ) : activeRequest.status === 'APPROVED' ? (
               <div className="rounded-lg bg-emerald-50 p-3 border border-emerald-100 mt-2">
-                <p className="text-xs text-emerald-800 font-medium mb-1">
-                  ✅ Disetujui! Teknisi dijadwalkan datang pada:
-                </p>
-                <p className="text-sm font-bold text-emerald-900">
-                  📅 {activeRequest.scheduledDate ? new Date(activeRequest.scheduledDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'Menunggu update'}
-                </p>
-                <p className="text-sm font-bold text-emerald-900 mb-2">
-                  ⏰ Jam: {activeRequest.scheduledTime || 'Menunggu konfirmasi'}
-                </p>
-                {activeRequest.adminNotes && (
-                  <p className="text-xs text-emerald-700 italic border-t border-emerald-200 pt-2">
-                    Catatan: {activeRequest.adminNotes}
-                  </p>
-                )}
+                <p className="text-xs text-emerald-800 font-medium mb-1">✅ Disetujui! Teknisi dijadwalkan datang pada:</p>
+                <p className="text-sm font-bold text-emerald-900">📅 {activeRequest.scheduledDate ? new Date(activeRequest.scheduledDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'Menunggu update'}</p>
+                <p className="text-sm font-bold text-emerald-900 mb-2">⏰ Jam: {activeRequest.scheduledTime || 'Menunggu konfirmasi'}</p>
+                {activeRequest.adminNotes && <p className="text-xs text-emerald-700 italic border-t border-emerald-200 pt-2">Catatan: {activeRequest.adminNotes}</p>}
+              </div>
+            ) : activeRequest.status === 'COMPLETED' ? (
+              <div className="rounded-lg bg-blue-50 p-3 border border-blue-100 mt-2 flex flex-col items-start gap-2">
+                <p className="text-xs font-bold text-blue-800">✅ Permintaan selesai diproses!</p>
+                <button onClick={handleAcknowledge} className="bg-blue-600 text-white px-4 py-1.5 text-xs font-bold rounded-md hover:bg-blue-700 transition-colors shadow-sm">OK</button>
+              </div>
+            ) : (
+              <div className="rounded-lg bg-rose-50 p-3 border border-rose-100 mt-2 flex flex-col items-start gap-2">
+                <p className="text-xs font-bold text-rose-800">❌ Pengajuan Ditolak</p>
+                {activeRequest.adminNotes && <p className="text-xs text-rose-700 bg-white/50 p-2 rounded w-full">Alasan: {activeRequest.adminNotes}</p>}
+                <button onClick={handleAcknowledge} className="bg-rose-600 text-white px-4 py-1.5 text-xs font-bold rounded-md hover:bg-rose-700 transition-colors shadow-sm">OK</button>
               </div>
             )}
           </div>
