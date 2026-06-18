@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Plus, FileText, Loader2, CheckCircle2 } from "lucide-react";
+import { AlertCircle, Plus, FileText, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import useSWR from "swr";
 import api from "@/lib/api";
 
@@ -21,11 +21,36 @@ export function BillingStats({ activeServiceId }: BillingStatsProps) {
   const serviceActiveInvoices = activeInvoices?.filter((inv: any) => inv.service?.id === targetService?.id) || activeInvoices || [];
   const serviceHistoryInvoices = historyInvoices?.filter((inv: any) => inv.service?.id === targetService?.id) || historyInvoices || [];
 
-  const rawDueDate = serviceActiveInvoices[0]?.dueDate || targetService?.invoices?.[0]?.dueDate;
+  // Ambil Tagihan Aktif Saat Ini
+  const activeInvoice = serviceActiveInvoices[0];
+  const rawDueDate = activeInvoice?.dueDate || targetService?.invoices?.[0]?.dueDate;
   const dueDateObj = rawDueDate ? new Date(rawDueDate) : null;
   const tglJatuhTempo = dueDateObj 
-    ? dueDateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) // Hasilnya: "17 Jun"
+    ? dueDateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) 
     : '-';
+
+  // 🔥 LOGIC NGITUNG TELAT BERAPA HARI
+  const today = new Date();
+  let daysLate = 0;
+  let isLate = false;
+  let warningLevel = 0;
+
+  if (dueDateObj && activeInvoice) {
+    // Reset jam ke 00:00 biar hitungannya akurat murni pergantian hari
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const dueMidnight = new Date(dueDateObj.getFullYear(), dueDateObj.getMonth(), dueDateObj.getDate());
+    
+    const diffTime = todayMidnight.getTime() - dueMidnight.getTime();
+    daysLate = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    isLate = daysLate > 0;
+
+    // Tentukan Level Eskalasi Peringatan (Mentok Level 3)
+    if (isLate) {
+      if (daysLate <= 3) warningLevel = 1;      // Hari 1 - 3 (Halus)
+      else if (daysLate <= 6) warningLevel = 2; // Hari 4 - 6 (Tegas)
+      else warningLevel = 3;                    // Hari 7+ (Mentok / Keras)
+    }
+  }
 
   const lunasCount = serviceHistoryInvoices.length || 0;
   const pendingCount = serviceActiveInvoices.length || 0;
@@ -75,21 +100,9 @@ export function BillingStats({ activeServiceId }: BillingStatsProps) {
 
         {isLoading ? (
           <Loader2 className="w-6 h-6 animate-spin text-gray-400 mt-2" />
-        ) : tglJatuhTempo !== '-' ? (
+        ) : !activeInvoice ? (
           <>
-            <div className="mb-2 sm:mb-3 text-3xl sm:text-4xl font-black text-black">
-              Tgl {tglJatuhTempo}
-            </div>
-            <div className="mb-2 sm:mb-3 inline-block rounded-full bg-orange-500 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-white">ATTENTION!</div>
-            <div className="mt-2 sm:mt-3 flex items-start gap-1.5 rounded-lg bg-gray-50 p-2">
-              <AlertCircle className="mt-0.5 h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0 text-gray-500" />
-              <p className="text-[9px] sm:text-[10px] leading-relaxed text-gray-700">
-                Pembayaran melewati tanggal {tglJatuhTempo} akan dikenakan isolir otomatis.
-              </p>
-            </div>
-          </>
-        ) : (
-          <>
+            {/* TAMPILAN JIKA LUNAS */}
             <div className="mb-2 sm:mb-3 text-2xl sm:text-3xl font-black text-emerald-500 mt-1">
               Sudah Lunas
             </div>
@@ -101,23 +114,87 @@ export function BillingStats({ activeServiceId }: BillingStatsProps) {
               </p>
             </div>
           </>
+        ) : isLate ? (
+          <>
+            {/* TAMPILAN JIKA TELAT NUNGGAK */}
+            <div className="mb-2 sm:mb-3 text-2xl sm:text-3xl font-black text-red-600 mt-1">
+              Lewat {daysLate} Hari
+            </div>
+            <div className="mb-2 sm:mb-3 inline-block rounded-full bg-red-600 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-white animate-pulse">TERLAMBAT</div>
+            <div className="mt-2 sm:mt-3 flex items-start gap-1.5 rounded-lg bg-red-50 p-2 border border-red-100">
+              <AlertCircle className="mt-0.5 h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0 text-red-600" />
+              <p className="text-[9px] sm:text-[10px] leading-relaxed text-red-700 font-medium">
+                Tagihan seharusnya dibayar pada tanggal {tglJatuhTempo}.
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* TAMPILAN JIKA BELUM JATUH TEMPO (AMAN) */}
+            <div className="mb-2 sm:mb-3 text-3xl sm:text-4xl font-black text-black">
+              Tgl {tglJatuhTempo}
+            </div>
+            <div className="mb-2 sm:mb-3 inline-block rounded-full bg-orange-500 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-semibold text-white">ATTENTION!</div>
+            <div className="mt-2 sm:mt-3 flex items-start gap-1.5 rounded-lg bg-gray-50 p-2">
+              <AlertCircle className="mt-0.5 h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0 text-gray-500" />
+              <p className="text-[9px] sm:text-[10px] leading-relaxed text-gray-700">
+                Pastikan membayar tagihan sebelum tanggal {tglJatuhTempo} agar layanan tetap aktif.
+              </p>
+            </div>
+          </>
         )}
       </div>
 
-      <div className="rounded-xl sm:rounded-2xl border-2 border-dashed border-gray-300 bg-white p-3 sm:p-4 shadow-sm">
-        <div className="flex items-center justify-center">
-          <button className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full hover:bg-gray-50 transition-colors">
-            <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
-          </button>
+      {/* 🔥 KOTAK BAWAH: MUNCUL KOTAK PERINGATAN KALAU TELAT, MUNCUL KOTAK ASLI KALAU AMAN */}
+      {isLate ? (
+        <div className={`rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm border ${
+          warningLevel === 1 ? 'bg-amber-50 border-amber-200' :
+          warningLevel === 2 ? 'bg-orange-50 border-orange-200' :
+          'bg-red-50 border-red-200'
+        }`}>
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className={`h-4 w-4 sm:h-5 sm:w-5 ${
+              warningLevel === 1 ? 'text-amber-600' :
+              warningLevel === 2 ? 'text-orange-600' :
+              'text-red-600 animate-pulse'
+            }`} />
+            <h3 className={`font-bold text-[11px] sm:text-xs ${
+              warningLevel === 1 ? 'text-amber-800' :
+              warningLevel === 2 ? 'text-orange-800' :
+              'text-red-800'
+            }`}>
+              {warningLevel === 1 ? 'Peringatan 1 (Ringan)' :
+               warningLevel === 2 ? 'Peringatan 2 (Tegas)' :
+               'Peringatan Terakhir!'}
+            </h3>
+          </div>
+          <p className={`text-[9px] sm:text-[10px] leading-relaxed font-medium ${
+              warningLevel === 1 ? 'text-amber-700' :
+              warningLevel === 2 ? 'text-orange-700' :
+              'text-red-700'
+          }`}>
+            {warningLevel === 1 ? 'Halo kak! Sekadar mengingatkan, tagihan internetnya sudah lewat jatuh tempo ya. Yuk dibayar biar internetnya tetap lancar!' :
+             warningLevel === 2 ? 'Pemberitahuan: Tagihan Anda telah menunggak. Mohon segera lakukan pembayaran untuk menghindari kendala pada layanan internet Anda.' :
+             'URGENT: Pembayaran Anda telah menunggak lebih dari seminggu! Mohon lunasi tagihan SEKARANG juga.'}
+          </p>
         </div>
-      </div>
-
-      <div className="rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-3 shadow-sm">
-        <div className="flex items-center justify-between text-[10px] sm:text-xs">
-          <span className="font-medium text-black">Metode Pembayaran</span>
-          <span className="text-gray-500">3 Bank</span>
-        </div>
-      </div>
+      ) : (
+        <>
+          <div className="rounded-xl sm:rounded-2xl border-2 border-dashed border-gray-300 bg-white p-3 sm:p-4 shadow-sm">
+            <div className="flex items-center justify-center">
+              <button className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full hover:bg-gray-50 transition-colors">
+                <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+              </button>
+            </div>
+          </div>
+          <div className="rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-3 shadow-sm">
+            <div className="flex items-center justify-between text-[10px] sm:text-xs">
+              <span className="font-medium text-black">Metode Pembayaran</span>
+              <span className="text-gray-500">3 Bank</span>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* CARD STATISTIK BAYAR DINAMIS */}
       <div className="rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-sm flex-1 flex flex-col justify-end">
