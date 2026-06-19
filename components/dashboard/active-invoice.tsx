@@ -24,19 +24,19 @@ export function ActiveInvoice({ activeServiceId, setActiveServiceId }: ActiveInv
 
   const currentServiceId = activeServiceId || services[0]?.id;
 
-  const activeRequest = serviceRequests?.find(
-    (req: any) =>
-      ['PENDING', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(req.status) &&
-      !hiddenRequests.includes(req.id) &&
-      req.serviceId === currentServiceId
-  );
-
   const [isPaying, setIsPaying] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>("DANA"); // Default DANA biar kelihatan redirect URL-nya
 
   const [activeModal, setActiveModal] = useState<'GANTI_PAKET' | 'PINDAH_ALAMAT' | 'PUTUS_LANGGANAN' | null>(null);
 
   const [hiddenRequests, setHiddenRequests] = useState<string[]>([]);
+
+  const activeRequest = serviceRequests?.find(
+    (req: any) =>
+      ['PENDING', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(req.status) &&
+      !hiddenRequests.includes(req.id) &&
+      req.serviceId === currentServiceId
+  );
 
   const handleAcknowledge = () => {
     if (activeRequest) {
